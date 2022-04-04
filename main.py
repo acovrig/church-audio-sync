@@ -1,18 +1,16 @@
-from cgitb import text
 import os
 import re
 import sys
 import glob
 from threading import Thread
 import subprocess
-from time import sleep
 from subprocess import Popen
+from time import sleep
 import tkinter as tk
 import tkinter.ttk as ttk
 
-from pkg_resources import SOURCE_DIST
 from uploader import Uploader
-from datetime import date, datetime
+from datetime import datetime
 
 SOURCE_BASE='C:\\Users\\acovrig\\Documents'
 ARCHIVE_BASE='R:'
@@ -185,8 +183,9 @@ class Automation(tk.Tk):
       'upload_dir': UPLOAD_DIR,
       'archive_base': ARCHIVE_BASE,
     }
-    up = Uploader(fn, config, sub, prog, self.done)
+    up = Uploader(fn, config, sub, prog)
     up.upload()
+    self.done()
 
   def done(self):
     self.tc -= 1
