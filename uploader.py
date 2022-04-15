@@ -9,18 +9,18 @@ class Uploader():
     self.config = config
 
   def upload(self):
-    key = paramiko.RSAKey.from_private_key_file(self.config['sftp_key'])
+    key = paramiko.RSAKey.from_private_key_file(self.config['key'])
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname=self.config['sftp_host'], port=self.config['sftp_port'], username=self.config['sftp_user'], pkey=key)
+    ssh.connect(hostname=self.config['host'], port=self.config['port'], username=self.config['user'], pkey=key)
     sftp = ssh.open_sftp()
-    sftp.chdir(self.config['upload_dir'])
+    sftp.chdir(self.config['dir'])
 
     if self.fn in sftp.listdir():
       print(f'Deleting {self.fn}')
       sftp.remove(self.fn)
     self.sub.config(text=f'Uploading {self.fn}')
-    sftp.put(f'{self.config["archive_base"]}\\{self.fn}', self.fn, self.upload_prog)
+    sftp.put(f'{self.config["src"]}\\{self.fn}', self.fn, self.upload_prog)
   
     print('Done')
     self.sub.pack_forget()

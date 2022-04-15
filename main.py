@@ -8,6 +8,7 @@ from subprocess import Popen
 from time import sleep
 import tkinter as tk
 import tkinter.ttk as ttk
+from dotenv import load_dotenv
 
 from uritemplate import expand
 
@@ -15,20 +16,30 @@ from uploader import Uploader
 from transcoder import Transcoder
 from datetime import datetime
 
-SOURCE_BASE='C:\\Users\\acovrig\\Documents'
-VID_BASE='C:\\Users\\acovrig\\Videos'
-ARCHIVE_AUDIO_BASE='R:'
-ARCHIVE_VIDEO_BASE='R:'
-SIKULI_PATH='C:\\src\\sikulixide-2.0.5.jar'
-SIKULI_SCRIPT_PATH='C:\\Users\\acovrig\\Documents\\tmp.sikuli'
-# ZIP_PATH='C:\\Program Files\\7-Zip\\7zG.exe'
-ZIP_PATH='C:\\Program Files\\7-Zip\\7z.exe'
+load_dotenv()
 
-SFTP_HOST = '192.168.5.76'
-SFTP_PORT = 22
-SFTP_USER = 'acovrig'
-SFTP_KEY = 'C:\\Users\\acovrig\\.ssh\\id_rsa'
-UPLOAD_DIR = '/mnt/user/projects/tmp'
+SOURCE_BASE = os.getenv('SOURCE_BASE')
+VID_BASE = os.getenv('VID_BASE')
+ARCHIVE_AUDIO_BASE = os.getenv('ARCHIVE_AUDIO_BASE')
+ARCHIVE_VIDEO_BASE = os.getenv('ARCHIVE_VIDEO_BASE')
+SIKULI_PATH = os.getenv('SIKULI_PATH')
+SIKULI_SCRIPT_PATH = os.getenv('SIKULI_SCRIPT_PATH')
+ZIP_PATH = os.getenv('ZIP_PATH')
+
+SFTP_BACKUP = {
+  'host': os.getenv('SFTP_BACKUP_HOST'),
+  'port': os.getenv('SFTP_BACKUP_PORT'),
+  'user': os.getenv('SFTP_BACKUP_USER'),
+  'key': os.getenv('SFTP_BACKUP_KEY'),
+  'dir': os.getenv('SFTP_BACKUP_DIR'),
+}
+SFTP_DVD = {
+  'host': os.getenv('SFTP_DVD_HOST'),
+  'port': os.getenv('SFTP_DVD_PORT'),
+  'user': os.getenv('SFTP_DVD_USER'),
+  'key': os.getenv('SFTP_DVD_KEY'),
+  'dir': os.getenv('SFTP_DVD_DIR'),
+}
 
 class Automation(tk.Tk):
   def __init__(self, **kwargs):
@@ -195,13 +206,8 @@ class Automation(tk.Tk):
     t1.start()
 
   def uploader(self, fn, sub, prog):
-    config = {
-      'sftp_host': SFTP_HOST,
-      'sftp_port': SFTP_PORT,
-      'sftp_user': SFTP_USER,
-      'sftp_key': SFTP_KEY,
-      'upload_dir': UPLOAD_DIR,
-      'archive_base': ARCHIVE_AUDIO_BASE,
+    config = SFTP_BACKUP | {
+      'src': ARCHIVE_AUDIO_BASE,
     }
     up = Uploader(fn, config, sub, prog)
     up.upload()
