@@ -1,1 +1,2 @@
 paramiko==2.10.3
+pexpect==4.8.0

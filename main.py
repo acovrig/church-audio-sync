@@ -9,11 +9,16 @@ from time import sleep
 import tkinter as tk
 import tkinter.ttk as ttk
 
+from uritemplate import expand
+
 from uploader import Uploader
+from transcoder import Transcoder
 from datetime import datetime
 
 SOURCE_BASE='C:\\Users\\acovrig\\Documents'
-ARCHIVE_BASE='R:'
+VID_BASE='C:\\Users\\acovrig\\Videos'
+ARCHIVE_AUDIO_BASE='R:'
+ARCHIVE_VIDEO_BASE='R:'
 SIKULI_PATH='C:\\src\\sikulixide-2.0.5.jar'
 SIKULI_SCRIPT_PATH='C:\\Users\\acovrig\\Documents\\tmp.sikuli'
 # ZIP_PATH='C:\\Program Files\\7-Zip\\7zG.exe'
@@ -27,7 +32,6 @@ UPLOAD_DIR = '/mnt/user/projects/tmp'
 
 class Automation(tk.Tk):
   def __init__(self, **kwargs):
-    self.should_quit = False
     self.tc = 0
     self.win = tk.Tk()
     self.win.title('Shutting Down')
@@ -57,7 +61,6 @@ class Automation(tk.Tk):
     self.main_thread()
 
   def close(self):
-    self.should_quit = True
     sys.exit()
 
   def is_running(self, name):
@@ -119,11 +122,10 @@ class Automation(tk.Tk):
     self.sub.pack_forget()
     self.prog.pack_forget()
     self.zip()
+    self.transcode()
 
   def zip(self):
     self.header.config(text='Archiving Recording')
-    if os.path.exists(f"{ARCHIVE_BASE}\\del3.7z"):
-      os.unlink(f"{ARCHIVE_BASE}\\del3.7z")
     date = datetime.now().strftime(r'%Y-%m-%d')
     fn = glob.glob(f'{SOURCE_BASE}\\{date}*')
     if len(fn) < 1:
@@ -134,7 +136,7 @@ class Automation(tk.Tk):
       t.start()
 
   def zip_thread(self, fn):
-    if not os.path.exists(f'{ARCHIVE_BASE}\\{fn}.7z'):
+    if not os.path.exists(f'{ARCHIVE_AUDIO_BASE}\\{fn}.7z'):
       prog = ttk.Progressbar(length=300)
       sub = tk.Label(text=f'Zipping {fn}')
       prog.pack()
@@ -147,9 +149,7 @@ class Automation(tk.Tk):
         # "-sdel",
         "-bsp1",
         "-mx9",
-        # f"E:\\church\\audio\\{fn}.7z",
-        # f"{SOURCE_BASE}\\{fn}"
-        f"{ARCHIVE_BASE}\\{fn}.7z",
+        f"{ARCHIVE_AUDIO_BASE}\\{fn}.7z",
         f"{SOURCE_BASE}\\{fn}"
       ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
       while cmd.poll() == None:
@@ -163,6 +163,26 @@ class Automation(tk.Tk):
       prog.pack_forget()
 
     self.upload(f'{fn}.7z')
+
+  def transcode(self):
+    date = datetime.now().strftime(r'%Y-%m-%d')
+    fn = glob.glob(f'{VID_BASE}\\{date}*')
+    for f in fn:
+      self.tc += 1
+      sub = tk.Label(text='')
+      prog = ttk.Progressbar(length=300)
+      prog.pack(expand=True)
+      sub.pack()
+      t = Thread(target=self.transcode_thread, args=(os.path.basename(f), sub, prog))
+      t.start()
+
+  def transcode_thread(self, f, sub, prog):
+    fn=f.replace('mkv', '')
+    trans = Transcoder(flavors=[
+      {'codec': 'libx264', 'dst': f'{ARCHIVE_VIDEO_BASE}\\{fn}.mp4'},
+      {'codec': 'libx265', 'dst': f'{ARCHIVE_VIDEO_BASE}\\{fn}-hevc.mp4'}
+    ], sub=sub, prog=prog)
+    trans.transcode(src=f'{VID_BASE}\\{f}')
 
   def upload(self, fn):
     print('Upload')
@@ -181,7 +201,7 @@ class Automation(tk.Tk):
       'sftp_user': SFTP_USER,
       'sftp_key': SFTP_KEY,
       'upload_dir': UPLOAD_DIR,
-      'archive_base': ARCHIVE_BASE,
+      'archive_base': ARCHIVE_AUDIO_BASE,
     }
     up = Uploader(fn, config, sub, prog)
     up.upload()
@@ -193,5 +213,6 @@ class Automation(tk.Tk):
       print('All is done - do the shutdown here')
       self.win.quit()
 
-app = Automation()
-app.win.mainloop()
+if __name__ == '__main__':
+  app = Automation()
+  app.win.mainloop()
