@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import sys
 import glob
 from threading import Thread
@@ -10,11 +11,12 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from dotenv import load_dotenv
 
-from uritemplate import expand
-
 from uploader import Uploader
 from transcoder import Transcoder
 from datetime import datetime
+
+DATE_OVERRIDE=None
+DATE_OVERRIDE='2022-04-16'
 
 load_dotenv()
 
@@ -44,6 +46,7 @@ SFTP_DVD = {
 class Automation(tk.Tk):
   def __init__(self, **kwargs):
     self.tc = 0
+    self.threads = []
     self.win = tk.Tk()
     self.win.title('Shutting Down')
 
@@ -79,6 +82,7 @@ class Automation(tk.Tk):
 
   def main_thread(self):
     t = Thread(target=self.close_apps)
+    self.threads.append(t)
     t.start()
 
   def close_apps(self):
@@ -95,11 +99,11 @@ class Automation(tk.Tk):
     ])
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('voicemeeter8x64.exe'):
+    if self.is_running('voicemeeterpro.exe'):
       self.header.config(text='Closing Voice Meeter')
       print('VoiceMeeter')
-      os.system(f"taskkill /im \"voicemeeter8x64.exe\"")
-      while self.is_running('voicemeeter8x64.exe'):
+      os.system(f"taskkill /im \"voicemeeterpro.exe\"")
+      while self.is_running('voicemeeterpro.exe'):
         sleep(0.5)
         
     i += 1
@@ -116,9 +120,9 @@ class Automation(tk.Tk):
     if self.is_running('chrome.exe'):
       self.header.config(text='Closing Chrome')
       print('Chrome')
-    #   os.system(f"taskkill /im \"chrome.exe\"")
-    #   while self.is_running('chrome.exe'):
-    #     sleep(0.5)
+      os.system(f"taskkill /im \"chrome.exe\"")
+      while self.is_running('chrome.exe'):
+        sleep(0.5)
         
     i += 1
     self.prog['value'] = cnt * i
@@ -128,22 +132,34 @@ class Automation(tk.Tk):
       # os.system(f"taskkill /im \"Waveform 11 (64-bit).exe\"")
       while self.is_running('Waveform 11 (64-bit).exe'):
         sleep(0.5)
+        
+    i += 1
+    self.prog['value'] = cnt * i
+    if self.is_running('Livestream Studio Core.exe'):
+      self.header.config(text='Closing Livestream')
+      print('Livestream')
+      # os.system(f"taskkill /im \"Livestream Studio Core.exe\"")
+      while self.is_running('Livestream Studio Core.exe'):
+        sleep(0.5)
 
     self.sikuli.terminate()
     self.sub.pack_forget()
     self.prog.pack_forget()
     self.zip()
     self.transcode()
+    if self.tc < 1:
+      self.header.config(text='Error, no file found, wrong date?')
+      print('No file found.')
+      self.win.quit()
 
   def zip(self):
     self.header.config(text='Archiving Recording')
-    date = datetime.now().strftime(r'%Y-%m-%d')
+    date = DATE_OVERRIDE if DATE_OVERRIDE != None else datetime.now().strftime(r'%Y-%m-%d')
     fn = glob.glob(f'{SOURCE_BASE}\\{date}*')
-    if len(fn) < 1:
-      self.win.quit()
     for f in fn:
       self.tc += 1
       t = Thread(target=self.zip_thread, args=(os.path.basename(f),))
+      self.threads.append(t)
       t.start()
 
   def zip_thread(self, fn):
@@ -173,43 +189,51 @@ class Automation(tk.Tk):
       sub.pack_forget()
       prog.pack_forget()
 
-    self.upload(f'{fn}.7z')
+    self.upload(SFTP_BACKUP, f'{ARCHIVE_AUDIO_BASE}\\{fn}.7z', 'audio')
 
   def transcode(self):
-    date = datetime.now().strftime(r'%Y-%m-%d')
+    date = DATE_OVERRIDE if DATE_OVERRIDE != None else datetime.now().strftime(r'%Y-%m-%d')
     fn = glob.glob(f'{VID_BASE}\\{date}*')
     for f in fn:
-      self.tc += 1
+      self.tc += 3
       sub = tk.Label(text='')
       prog = ttk.Progressbar(length=300)
       prog.pack(expand=True)
       sub.pack()
       t = Thread(target=self.transcode_thread, args=(os.path.basename(f), sub, prog))
+      self.threads.append(t)
       t.start()
 
   def transcode_thread(self, f, sub, prog):
-    fn=f.replace('mkv', '')
+    date = f[0:10]
+    if not os.path.exists(f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw'):
+      os.makedirs(f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw')
     trans = Transcoder(flavors=[
-      {'codec': 'libx264', 'dst': f'{ARCHIVE_VIDEO_BASE}\\{fn}.mp4'},
-      {'codec': 'libx265', 'dst': f'{ARCHIVE_VIDEO_BASE}\\{fn}-hevc.mp4'}
+      {'codec': 'libx264', 'dst': f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\{date}.mp4'},
+      {'codec': 'libx265', 'dst': f'{ARCHIVE_VIDEO_BASE}\\hevc\\{date}.mp4'}
     ], sub=sub, prog=prog)
     trans.transcode(src=f'{VID_BASE}\\{f}')
+    print('Archive source video')
+    shutil.move(f'{VID_BASE}\\{f}', f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw\\{f}')
+    print('Archive source video: done')
+    
+    self.upload(SFTP_BACKUP, f'{ARCHIVE_VIDEO_BASE}\\hevc\\{date}.mp4', f'hevc')
+    self.upload(SFTP_BACKUP, f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\{date}.mp4', f'h264/{date}')
+    self.upload(SFTP_DVD, f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\{date}.mp4')
 
-  def upload(self, fn):
+  def upload(self, config, src, dst = ''):
     print('Upload')
     self.header.config(text='Uploading to backup server')
     sub = tk.Label(text="")
     prog = ttk.Progressbar(length=300)
     prog.pack(expand=True)
     sub.pack()
-    t1 = Thread(target=self.uploader, args=(fn, sub, prog))
-    t1.start()
+    t = Thread(target=self.uploader, args=(config, src, dst, sub, prog))
+    self.threads.append(t)
+    t.start()
 
-  def uploader(self, fn, sub, prog):
-    config = SFTP_BACKUP | {
-      'src': ARCHIVE_AUDIO_BASE,
-    }
-    up = Uploader(fn, config, sub, prog)
+  def uploader(self, config, src, dst, sub, prog):
+    up = Uploader(config, src, dst, sub, prog)
     up.upload()
     self.done()
 
@@ -217,8 +241,11 @@ class Automation(tk.Tk):
     self.tc -= 1
     if self.tc < 1:
       print('All is done - do the shutdown here')
-      self.win.quit()
+      self.win.destroy()
 
 if __name__ == '__main__':
+  if not os.path.exists('.env'):
+    print('ENV file missing, please copy .env.sample to .env and modify as needed.')
+    quit()
   app = Automation()
   app.win.mainloop()

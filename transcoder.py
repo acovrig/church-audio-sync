@@ -1,5 +1,5 @@
 import re
-import platform
+from os import path
 import subprocess
 from subprocess import Popen
 from datetime import datetime
@@ -11,7 +11,7 @@ class Transcoder():
     self.prog = prog
 
   def transcode(self, src):
-    cmd = ['ffmpeg', '-y', '-hide_banner', '-nostdin', '-i', src]
+    cmd = ['ffmpeg', '-n', '-hide_banner', '-nostdin', '-i', src]
     for flavor in self.flavors:
       codec = flavor['codec']
       dst = flavor['dst']
@@ -35,7 +35,7 @@ class Transcoder():
         ts = datetime.strptime(t, "%H:%M:%S")
         ts = (ts - datetime(1900, 1, 1)).total_seconds()
         print(f'\r {ts}/{dur}: {src} ({fps}fps - x{speed})', end='')
-        self.sub.config(text=f'Transcoding {ts}/{dur}: {src} ({fps}fps - x{speed})')
+        self.sub.config(text=f'Transcoding {ts}/{dur}: {path.basename(src)} ({fps}fps - x{speed})')
         if dur > 0:
           self.prog.config(value=round((ts*100)/dur))
       elif dur_m != None and dur == 0:
