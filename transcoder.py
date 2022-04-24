@@ -1,5 +1,5 @@
 import re
-from os import path
+from os import path, remove
 import subprocess
 from subprocess import Popen
 from datetime import datetime
@@ -10,9 +10,11 @@ class Transcoder():
     self.sub = sub
     self.prog = prog
 
-  def transcode(self, src):
+  def transcode(self, src, chapters = None):
     cmd = ['ffmpeg', '-n', '-hide_banner', '-nostdin', '-i', src]
     for flavor in self.flavors:
+      if chapters is not None:
+        cmd += ['-i', chapters, '-map_metadata', '1']
       codec = flavor['codec']
       dst = flavor['dst']
       cmd += ['-c:v', codec]
@@ -45,6 +47,8 @@ class Transcoder():
     print('Done')
     self.sub.pack_forget()
     self.prog.pack_forget()
+    if chapters is not None:
+      remove(chapters)
 
 if __name__ == '__main__':
   trans = Transcoder(codecs=['h264', 'h265'])

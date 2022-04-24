@@ -14,9 +14,10 @@ from dotenv import load_dotenv
 from uploader import Uploader
 from transcoder import Transcoder
 from datetime import datetime
+from bulletin_db import BulletinDB
 
 DATE_OVERRIDE=None
-DATE_OVERRIDE='2022-04-16'
+# DATE_OVERRIDE='2022-04-16'
 
 load_dotenv()
 
@@ -50,8 +51,8 @@ class Automation(tk.Tk):
     self.win = tk.Tk()
     self.win.title('Shutting Down')
 
-    window_width = 400
-    window_height = 200
+    window_width = 600
+    window_height = 400
     screen_width = self.win.winfo_screenwidth()
     screen_height = self.win.winfo_screenheight()
     center_x = int(screen_width/2 - window_width / 2)
@@ -78,7 +79,7 @@ class Automation(tk.Tk):
     sys.exit()
 
   def is_running(self, name):
-    return (name in os.popen(f"tasklist /fi \"IMAGENAME eq {name}\"").read())
+    return (name in os.popen(f"tasklist /fo csv /fi \"IMAGENAME eq {name}\"").read())
 
   def main_thread(self):
     t = Thread(target=self.close_apps)
@@ -88,7 +89,7 @@ class Automation(tk.Tk):
   def close_apps(self):
     print('Closing Things')
     self.header.config(text='Closing Things')
-    cnt = 5
+    cnt = 6
     i = 0
     self.sikuli = Popen([
       "java",
@@ -99,48 +100,52 @@ class Automation(tk.Tk):
     ])
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('voicemeeterpro.exe'):
-      self.header.config(text='Closing Voice Meeter')
-      print('VoiceMeeter')
+    self.header.config(text='Closing Voice Meeter')
+    print('VoiceMeeter')
+    while self.is_running('voicemeeterpro.exe'):
       os.system(f"taskkill /im \"voicemeeterpro.exe\"")
-      while self.is_running('voicemeeterpro.exe'):
-        sleep(0.5)
+      sleep(2)
         
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('obs64.exe'):
-      self.header.config(text='Closing OBS')
-      print('OBS')
+    self.header.config(text='Closing OBS')
+    print('OBS')
+    while self.is_running('obs64.exe'):
       os.system(f"taskkill /im \"obs64.exe\"")
-      while self.is_running('obs64.exe'):
-        sleep(0.5)
+      sleep(2)
         
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('chrome.exe'):
-      self.header.config(text='Closing Chrome')
-      print('Chrome')
+    self.header.config(text='Closing Chrome')
+    print('Chrome')
+    while self.is_running('chrome.exe'):
       os.system(f"taskkill /im \"chrome.exe\"")
-      while self.is_running('chrome.exe'):
-        sleep(0.5)
+      sleep(2)
         
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('Waveform 11 (64-bit).exe'):
-      self.header.config(text='Closing Waveform')
-      print('Waveform')
+    self.header.config(text='Closing X32')
+    print('X32')
+    while self.is_running('X32-Edit.exe'):
+      os.system(f"taskkill /im \"X32-Edit.exe\"")
+      sleep(2)
+        
+    i += 1
+    self.prog['value'] = cnt * i
+    self.header.config(text='Closing Waveform')
+    print('Waveform')
+    while self.is_running('Waveform 11 (64-bit).exe'):
+      # Closing waveform via sikuli
       # os.system(f"taskkill /im \"Waveform 11 (64-bit).exe\"")
-      while self.is_running('Waveform 11 (64-bit).exe'):
-        sleep(0.5)
+      sleep(2)
         
     i += 1
     self.prog['value'] = cnt * i
-    if self.is_running('Livestream Studio Core.exe'):
-      self.header.config(text='Closing Livestream')
-      print('Livestream')
-      # os.system(f"taskkill /im \"Livestream Studio Core.exe\"")
-      while self.is_running('Livestream Studio Core.exe'):
-        sleep(0.5)
+    self.header.config(text='Closing Livestream')
+    print('Livestream')
+    # os.system(f"taskkill /im \"Livestream Studio Core.exe\"")
+    while self.is_running('Livestream Studio Core.exe'):
+      sleep(2)
 
     self.sikuli.terminate()
     self.sub.pack_forget()
@@ -194,17 +199,52 @@ class Automation(tk.Tk):
   def transcode(self):
     date = DATE_OVERRIDE if DATE_OVERRIDE != None else datetime.now().strftime(r'%Y-%m-%d')
     fn = glob.glob(f'{VID_BASE}\\{date}*')
+    if len(fn) < 1:
+      print('ERROR: no files found to transcode')
     for f in fn:
       self.tc += 3
       sub = tk.Label(text='')
       prog = ttk.Progressbar(length=300)
       prog.pack(expand=True)
       sub.pack()
-      t = Thread(target=self.transcode_thread, args=(os.path.basename(f), sub, prog))
+
+      chapt_fn = os.path.join(os.path.dirname(f), f'{date}.chapters')
+      db = BulletinDB()
+      db = db.get_date()
+      h, m, s = db[0]['ss'].split(':')
+      dur = int(h) * 3600 + int(m) * 60 + int(s)
+      chapters = f';FFMETADATA1\ntitle=Church {date}\n\n'
+      chapters += "[CHAPTER]\n"
+      chapters += "TIMEBASE=1/1000\n"
+      chapters += f"START=0\n"
+      chapters += f"END={dur * 1000}\n"
+      chapters += f"title=Welcome\n\n"
+      for i, e in enumerate(db):
+        print(e)
+        try:
+          end = db[i + 1]
+        except:
+          break
+
+        h, m, s = e['ss'].split(':')
+        ss = int(h) * 3600 + int(m) * 60 + int(s)
+        h, m, s = end['ss'].split(':')
+        dur = int(h) * 3600 + int(m) * 60 + int(s)
+        chapters += "[CHAPTER]\n"
+        chapters += "TIMEBASE=1/1000\n"
+        chapters += f"START={ss * 1000}\n"
+        chapters += f"END={dur * 1000}\n"
+        chapters += f"title={e['name']}\n\n"
+
+      print(f'Writing {chapt_fn}:\n\n{chapters}')
+      with open(chapt_fn, 'w') as f:
+        f.write(chapters)
+
+      t = Thread(target=self.transcode_thread, args=(os.path.basename(f), chapt_fn, sub, prog))
       self.threads.append(t)
       t.start()
 
-  def transcode_thread(self, f, sub, prog):
+  def transcode_thread(self, f, chapt_fn, sub, prog):
     date = f[0:10]
     if not os.path.exists(f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw'):
       os.makedirs(f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw')
@@ -212,7 +252,7 @@ class Automation(tk.Tk):
       {'codec': 'libx264', 'dst': f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\{date}.mp4'},
       {'codec': 'libx265', 'dst': f'{ARCHIVE_VIDEO_BASE}\\hevc\\{date}.mp4'}
     ], sub=sub, prog=prog)
-    trans.transcode(src=f'{VID_BASE}\\{f}')
+    trans.transcode(src=f'{VID_BASE}\\{f}', chapters=chapt_fn)
     print('Archive source video')
     shutil.move(f'{VID_BASE}\\{f}', f'{ARCHIVE_VIDEO_BASE}\\h264\\{date}\\raw\\{f}')
     print('Archive source video: done')
