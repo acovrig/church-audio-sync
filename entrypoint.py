@@ -141,7 +141,7 @@ print(f'Sync file: {sync_file}')
 if offset == None:
   offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
   if offset == b'':
-    print("Unable to determine offset, trying offset: ")
+    print("Unable to determine offset, trying skip: ")
     cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f), '-af', 'aresample=resampler=soxr', '-ar', '48000', path.join(audio, f'{f}.sync30.aac')]
     print('Jumping 30min: ', end='')
     print(subprocess.list2cmdline(cmd))
@@ -152,7 +152,7 @@ if offset == None:
     offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
   if offset == b'':
     print("Unable to determine offset, please manually enter (in seconds): ", end="")
-    offset = input()
+    sys.exit(2)
 offset = float(offset)
 
 for root, dirs, files in walk(audio):
@@ -166,7 +166,6 @@ print(f'Offset: {offset}')
 if path.exists(output):
   print(f'ERROR: {output} exists, not overwriting')
 
-# cmd=['ffmpeg', '-v', 'warning', '-stats', '-n']
 cmd=['ffmpeg', '-hide_banner', '-n']
 audio_count = 0
 for root, dirs, files in walk(audio):
