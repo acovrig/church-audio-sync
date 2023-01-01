@@ -17,6 +17,6 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile --pull --tag ghcr.io/acovrig/church-audio-sync:latest
     - name: Login to the registry
-      run: echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+      run: echo ${{ secrets.REG_PASSWORD }} | docker login ghcr.io -u ${{ secrets.REG_USERNAME }} --password-stdin
     - name: Push to the registry
       run: docker push ghcr.io/acovrig/church-audio-sync:latest
