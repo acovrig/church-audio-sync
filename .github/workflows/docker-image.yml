@@ -14,9 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --pull --tag ghcr.io/acovrig/church-audio-sync:latest
     - name: Login to the registry
       run: echo ${{ secrets.REG_PASSWORD }} | docker login ghcr.io -u ${{ secrets.REG_USERNAME }} --password-stdin
+    - name: Build the Docker image
+      run: |
+          docker pull ghcr.io/acovrig/church-audio-sync:latest
+          docker build . --file Dockerfile --tag ghcr.io/acovrig/church-audio-sync:latest
     - name: Push to the registry
       run: docker push ghcr.io/acovrig/church-audio-sync:latest
