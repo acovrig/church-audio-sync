@@ -142,7 +142,10 @@ if offset == None:
   offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
   if offset == b'':
     print("Unable to determine offset, trying skip: ")
-    cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f), '-af', 'aresample=resampler=soxr', '-ar', '48000', path.join(audio, f'{f}.sync30.aac')]
+    if path.exists(path.join(audio, f'{f}.sync.aac')):
+      cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f'{f}.sync.aac'), '-c', 'copy', path.join(audio, f'{f}.sync30.aac')]
+    else:
+      cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f), path.join(audio, f'{f}.sync30.aac')]
     print('Jumping 30min: ', end='')
     print(subprocess.list2cmdline(cmd))
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
