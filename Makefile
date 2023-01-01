@@ -1,7 +1,7 @@
 SUFFIXES += .d
 CXX = g++
 
-CFLAGS = -Werror -Wall -Wextra -Wfatal-errors -pedantic-errors -pedantic -march=native -O3 -I. -std=c++14
+CFLAGS = -Werror -Wall -Wextra -Wfatal-errors -pedantic-errors -pedantic -march=native -O3 -I. -std=c++14 -static -static-libgcc -static-libstdc++
 
 CFLAGS += $(shell pkg-config --cflags sndfile)
 LFLAGS =  $(shell pkg-config --libs sndfile)

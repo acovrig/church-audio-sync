@@ -25,12 +25,12 @@ downsample_and_cut ()
     ffmpeg -y -hide_banner -loglevel error -i "$1" -ab 8 -ar 8000 ${duration_limit_args} -map 0:a -ac 1 -vn "$2"
 }
 
-TEMP_DIR=$(mktemp -d /var/tmp/$(basename $0).XXXXXXXXXX)
-SCRIPT_DIR="$(dirname $(realpath $0))"
+TEMP_DIR=$(mktemp -d /var/tmp/$(basename "$0").XXXXXXXXXX)
+SCRIPT_DIR="$(dirname $(realpath "$0"))"
 COMPUTE_OFFSET="${SCRIPT_DIR}/compute_sound_offset"
 
-TMP_GOOD_SOUND="${TEMP_DIR}/$(basename ${GOOD_SOUND}).wav"
-TMP_BAD_SOUND="${TEMP_DIR}/$(basename ${BAD_SOUND}).wav"
+TMP_GOOD_SOUND="${TEMP_DIR}/$(basename "${GOOD_SOUND}").wav"
+TMP_BAD_SOUND="${TEMP_DIR}/$(basename "${BAD_SOUND}").wav"
 downsample_and_cut "${GOOD_SOUND}" "${TMP_GOOD_SOUND}"
 downsample_and_cut "${BAD_SOUND}" "${TMP_BAD_SOUND}"
 

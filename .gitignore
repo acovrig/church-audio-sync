@@ -1,0 +1,7 @@
+*.o
+*.d
+compute_sound_offset
+.git
+audio
+*.wav
+*.mp3
