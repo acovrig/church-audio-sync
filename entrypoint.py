@@ -231,7 +231,20 @@ except:
 
 cmd += ["-af", "aresample=resampler=soxr", "-ar", "48000"]
 
-cmd += ["-c:v", "copy", "-c:a", "aac"]
+cmd = ['ffprobe', '-v', 'error', '-of', 'default=noprint_wrappers=1:nokey=1', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name', video]
+print('Getting video codec: ', end='')
+print(subprocess.list2cmdline(cmd))
+try:
+  codec, err = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
+  if codec == 'hevc':
+    cmd += ["-c:v", "copy"]
+  else:
+    cmd += ["-c:v", "libx265"]
+except:
+  cmd += ["-c:v", "libx265"]
+  next
+
+cmd += ["-c:a", "aac"]
 if srt != None:
   cmd += ["-c:s", "ass"]
 cmd += [output]

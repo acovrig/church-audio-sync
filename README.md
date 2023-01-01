@@ -5,6 +5,7 @@ It then merges all audio from Waveform into an `mkv` with video from OBS.
 If subtitles, bulletin PDF, and chapters are available, it will merge those in also.
 If subtitles are not available, it will generate them via the Google Translate API.
 If the sample rate between OBS and Waveform don't match, it will resample the Waveform audio to match.
+If the video codec isn't hevc, it will convert it.
 
 ### Supported Formats
 They depend on how SoX and FFmpeg were built for your OS ([more details](https://github.com/alopatindev/sync-audio-tracks/issues/2#issuecomment-421603812)). If it didn't work with some format for you — try WAV as experiment.
