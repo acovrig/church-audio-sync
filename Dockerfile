@@ -4,7 +4,7 @@ WORKDIR /src
 ENTRYPOINT ["python3", "/src/entrypoint.py"]
 
 RUN apt update \
-  && apt install -y \
+  && DEBIAN_FRONTEND=noninteractive apt install -y \
     bc \
     build-essential \
     ffmpeg \
