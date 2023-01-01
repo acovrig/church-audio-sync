@@ -182,6 +182,8 @@ for f in audio_files:
     cmd += ['-channel_layout', layout]
 
   cmd += ['-i', path.join(audio, f)]
+  if rate != 48000:
+    cmd += ['-af', 'aresample=resampler=soxr', '-ar', '48000']
 
   # make talkback mono
   if 'talkback_take' in f.lower():

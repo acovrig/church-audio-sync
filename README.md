@@ -1,9 +1,10 @@
 # Sync Audio Tracks
-This code is based on [Miles McCoo's cross-correlation implementation](https://web.archive.org/web/20170916044116/https://nerd.mmccoo.com/2017/06/19/automatically-aligning-multiple-videoaudio-clips-in-kdenlive/).
-It calculates a delay between two audios and produces a shifted audio.
-
-## Known Limitations
-Paths with spaces and weird characters are **unsupported**.
+This code is forked and expanded from [Alexander Lopatin's repository](https://github.com/alopatindev/sync-audio-tracks).
+It calculates a delay between the audio from OBS and Waveform.
+It then merges all audio from Waveform into an `mkv` with video from OBS.
+If subtitles, bulletin PDF, and chapters are available, it will merge those in also.
+If subtitles are not available, it will generate them via the Google Translate API.
+If the sample rate between OBS and Waveform don't match, it will resample the Waveform audio to match.
 
 ### Supported Formats
 They depend on how SoX and FFmpeg were built for your OS ([more details](https://github.com/alopatindev/sync-audio-tracks/issues/2#issuecomment-421603812)). If it didn't work with some format for you — try WAV as experiment.
@@ -17,6 +18,7 @@ Make sure these dependences are installed:
 - libsndfile (tested with 1.0.28)
 - python3 (tested with 3.6.10)
 - sox (tested with 14.4.2)
+- autosub3 (`pip3 install`) (tested with 0.1.0)
 
 On Debian some packages may need to be installed together with `-dev` packages (for instance `fftw` with `fftw-dev`).
 
@@ -27,13 +29,12 @@ make -j
 
 ## Usage
 ```
-./sync-audio-tracks.sh good_audio_from_recorder.wav bad_audio_from_camera.wav out.wav 900
+python3 entrypoint.py -v <video file> -a <audio dir> [-c <chapters>] [-s <subtitles>] [-p <pdfs_dir] [-o <output>]
 ```
-
-In this example
-- `out.wav` is a shifted version of `good_audio_from_recorder.wav`
-- `900` is sound duration limit for analysis (in seconds)
-
+OR
+```
+docker run -it --rm -v $(pwd):/media -w /media image_name -v obs_video.mp4 -a waveform_project/Recorded -o merged.mkv
+```
 ## License
 [Apache 2.0](LICENSE.txt)
 

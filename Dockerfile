@@ -1,8 +1,7 @@
 FROM ubuntu:latest
 RUN mkdir /src
 WORKDIR /src
-# ENTRYPOINT "./compute-sound-offset.sh"
-ENTRYPOINT ["python3", "entrypoint.py"]
+ENTRYPOINT ["python3", "/src/entrypoint.py"]
 
 RUN apt update \
   && apt install -y \
