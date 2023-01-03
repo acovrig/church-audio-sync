@@ -128,9 +128,9 @@ def find_sync_file(fn = 'stream'):
   return sync_file
 
 def get_opts():
-  global video, audio, chapters, srt, pdfdir, output
+  global video, audio, chapters, srt, pdfdir, dry_run, skip_voldetect, output, output_264
   try:
-    opts, args = getopt.getopt(sys.argv[1:],"hv:c:a:s:p:o:",["video=","chapters=", "audio_dir=", "subtitles=", "pdf_dir=", "output="])
+    opts, args = getopt.getopt(sys.argv[1:],"caspdhiv:o:2:",["video=","chapters", "audio_dir", "subtitles", "pdf_dir", "dry_run", "include_audio", "output", "output_264"])
   except getopt.GetoptError:
     print_help()
     sys.exit(2)
@@ -148,8 +148,22 @@ def get_opts():
       srt = arg
     elif opt in ("-p", "--pdfs"):
       pdfdir = arg
+    elif opt in ("-d", "--dry_run"): 
+      dry_run = True
+    elif opt in ("-i", "--include_audio"): 
+      skip_voldetect = True
     elif opt in ("-o", "--output"): 
       output = arg
+    elif opt in ("-2", "--output_264"): 
+      output_264 = arg
+
+  if audio == '':
+    try:
+      date = re.search(r"([0-9]{4}-[0-9]{2}-[0-9]{2})", video).group(1)
+      audio = path.abspath(path.join(path.dirname(video), '..', 'audio', date, 'Recorded'))
+    except AttributeError:
+      print('ERROR: Unable to determine audio path')
+      sys.exit(2)
 
   if not path.exists(video):
     print(f'ERROR: {video} does not exist')
@@ -157,10 +171,14 @@ def get_opts():
   if not path.exists(audio):
     print(f'ERROR: {audio} does not exist')
     sys.exit(2)
+  if output == '' and output_264 == '':
+    print('ERROR: output path is required')
+    print('Please specify an HEVC output [-o] or H.264 output [-2]')
+    sys.exit(2)
 
   find_additions()
   
-  return video, audio, chapters, srt, pdfdir, output
+  return video, audio, chapters, srt, pdfdir, dry_run, skip_voldetect, output, output_264
 
 def find_additions():
   global srt, pdfdir, chapters
@@ -238,7 +256,63 @@ def find_offset():
         remove(path.join(audio, f))
   return offset
 
-video = chapters = audio = srt = pdfdir = output = ''
+def fix_chapters():
+  global chapters
+  print(f'Fix chapters with offset {offset} - {chapters}')
+  main_title = None
+  chapters_arr = []
+  with open(chapters, 'r') as f:
+    chapt = None
+    for l in f.readlines():
+      l = l.replace("\n", "")
+      if '[chapter]' in l.lower():
+        if chapt != None:
+          chapters_arr.append(chapt)
+        chapt={}
+
+      if l.lower().startswith('title='):
+        if chapt == None:
+          try:
+            main_title=re.search(r"title=(.*)$", l, re.IGNORECASE).group(1)
+          except:
+            next
+        else:
+          try:
+            title=re.search(r"title=(.*)$", l, re.IGNORECASE).group(1)
+            chapt['title'] = title
+          except:
+            next
+
+      elif chapt != None and l.lower().startswith('start='):
+        try:
+          start=re.search(r"start=(.*)$", l, re.IGNORECASE).group(1)
+          chapt['start'] = int(start) / 1000
+        except:
+          next
+
+      elif chapt != None and l.lower().startswith('end='):
+        try:
+          end=re.search(r"end=(.*)$", l, re.IGNORECASE).group(1)
+          chapt['end'] = int(end) / 1000
+        except:
+          next
+
+  chapters = f'{chapters.replace(".chapters", "")}.offset.chapters'
+
+  new_chapters = f';FFMETADATA1\ntitle={main_title}\n\n'
+  for chapt in chapters_arr:
+    new_chapters += "[CHAPTER]\n"
+    new_chapters += "TIMEBASE=1/1000\n"
+    new_chapters += f"START={int(chapt['start'] + offset) * 1000}\n"
+    new_chapters += f"END={int(chapt['end'] + offset) * 1000}\n"
+    new_chapters += f"title={chapt['title']}\n\n"
+
+  print(f'Writing {chapters}:\n\n{new_chapters}')
+  with open(chapters, 'w') as f:
+    f.write(new_chapters)
+
+dry_run = False
+video = chapters = audio = srt = pdfdir = output = output_264 = ''
 rate = 0
 get_opts()
 
@@ -247,107 +321,126 @@ print(f'Input audio dir: {audio}')
 print(f'Input chapters: {chapters}')
 print(f'Input subtitles: {srt}')
 print(f'Input pdfs dir: {pdfdir}')
-print(f'Output: {output}')
+print(f'Output HEVC: {output}')
+print(f'Output H.264: {output_264}')
+if dry_run:
+  print('DRY RUN, not running ffmpeg, only generate command')
 
 if chapters != None and not path.exists(chapters):
   print(f'ERROR: {chapters} does not exist')
   sys.exit(2)
 
-find_sync_file()
-print(f'Sync file: {sync_file}')
-
-find_offset()
-print(f'Offset: {offset}')
-
 if path.exists(output):
   print(f'ERROR: {output} exists, not overwriting')
 
 cmd=['ffmpeg', '-hide_banner', '-n']
-audio_count = 0
-for root, dirs, files in walk(audio):
-  audio_files = list(filter(filter_file, files))
+if output != '':
+  find_offset()
+  print(f'Offset: {offset}')
 
-for f in audio_files:
-  audio_count += 1
-  layout = 'mono'
-  if 'talkback_take' in f.lower() or 'pc_take' in f.lower():
-    layout = 'stereo'
-  
-  # aux used to be stereo, but became mono
-  if 'aux_take' not in f.lower():
-    cmd += ['-channel_layout', layout]
+  audio_count = 0
+  for root, dirs, files in walk(audio):
+    audio_files = list(filter(filter_file, files))
 
-  cmd += ['-i', path.join(audio, f)]
-  if rate != 48000:
-    cmd += ['-af', 'aresample=resampler=soxr', '-ar', '48000']
+  for f in audio_files:
+    audio_count += 1
+    layout = 'mono'
+    if 'talkback_take' in f.lower() or 'pc_take' in f.lower():
+      layout = 'stereo'
+    
+    # aux used to be stereo, but became mono
+    if 'aux_take' not in f.lower():
+      cmd += ['-channel_layout', layout]
 
-  # make talkback mono
-  if 'talkback_take' in f.lower():
-    cmd += ['-ac', '1']
+    cmd += ['-i', path.join(audio, f)]
+    if rate != 48000:
+      cmd += ['-af', 'aresample=resampler=soxr', '-ar', '48000']
 
-cmd += ["-itsoffset", str(offset)]
-cmd += ['-channel_layout', 'stereo', '-i', video]
-if srt != None:
+    # make talkback mono
+    if 'talkback_take' in f.lower():
+      cmd += ['-ac', '1']
+
   cmd += ["-itsoffset", str(offset)]
-  cmd += ["-i", srt]
-if chapters != None:
-  cmd += ["-itsoffset", str(offset)]
-  cmd += ["-i", chapters]
-cmd += ["-b:a", "192k"]
-cmd += ["-map_metadata", "1"]
+  cmd += ['-channel_layout', 'stereo', '-i', video]
+  if chapters != None:
+    audio_count += 1 # So the srt map # below works (and the map_metadata)
+    if offset > 0:
+      fix_chapters()
+    cmd += ["-i", chapters]
+    cmd += ["-map_metadata", str(audio_count)]
+  if srt != None:
+    cmd += ["-itsoffset", str(offset)]
+    cmd += ["-i", srt]
+  cmd += ["-b:a", "192k"]
 
-cmd += ["-map", f'{audio_count}:v']
-cmd += ["-map", f'{audio_count}:a']
-if str != None:
-  cmd += ["-map", f"{audio_count + 1}:0"]
-for i, f in enumerate(audio_files):
-  cmd += ["-map", str(i)]
+  cmd += ["-map", f'{audio_count}:v']
+  cmd += ["-map", f'{audio_count}:a']
+  if srt != None:
+    cmd += ["-map", f"{audio_count + 1}:0"]
+  for i, f in enumerate(audio_files):
+    cmd += ["-map", str(i)]
 
-cmd += [f'-metadata:s:a:0', 'title=AV']
-cmd += [f'-disposition:a:0', 'default']
-for i, f in enumerate(audio_files):
+  cmd += [f'-metadata:s:a:0', 'title=AV']
+  cmd += [f'-disposition:a:0', 'default']
+  for i, f in enumerate(audio_files):
+    try:
+      title=re.search(r"_([a-zA-Z0-9 ]*?)_Take", f).group(1)
+    except:
+      title = f
+    cmd += [f'-metadata:s:a:{i+1}', f'title={title}']
+
   try:
-    title=re.search(r"_([a-zA-Z0-9 ]*?)_Take", f).group(1)
+    date = re.search(r"([0-9]{4}-[0-9]{2}-[0-9]{2})", video).group(1)
+    pdf = path.join(pdfdir, f"{date}.pdf")
+    print(f'PDF: {pdf}: ', end='')
+    if path.exists(pdf):
+      print('exists')
+      cmd += ["-attach", pdf, "-metadata:s:t", "mimetype=application/pdf"]
+    else:
+      print('does not exist')
   except:
-    title = f
-  cmd += [f'-metadata:s:a:{i+1}', f'title={title}']
+    print(f'Filed to get PDF from {video}')
+    next
 
-try:
-  date = re.search(r"([0-9]{4}-[0-9]{2}-[0-9]{2})", video).group(1)
-  pdf = path.join(pdfdir, f"{date}.pdf")
-  print(f'PDF: {pdf}: ', end='')
-  if path.exists(pdf):
-    print('exists')
-    cmd += ["-attach", pdf, "-metadata:s:t", "mimetype=application/pdf"]
-  else:
-    print('does not exist')
-except:
-  print(f'Filed to get PDF from {video}')
-  next
+  cmd += ["-af", "aresample=resampler=soxr", "-ar", "48000"]
 
-cmd += ["-af", "aresample=resampler=soxr", "-ar", "48000"]
-
-codec_cmd = ['ffprobe', '-v', 'error', '-of', 'default=noprint_wrappers=1:nokey=1', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name', video]
-print('Video codec: ', end='')
-try:
-  codec, err = subprocess.Popen(codec_cmd, stdout=subprocess.PIPE).communicate()
-  codec = codec.decode('utf-8').replace("\n", "")
-  print(codec)
-  if codec == 'hevc':
-    cmd += ["-c:v", "copy"]
-  else:
+  codec_cmd = ['ffprobe', '-v', 'error', '-of', 'default=noprint_wrappers=1:nokey=1', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name', video]
+  print('Video codec: ', end='')
+  try:
+    codec, err = subprocess.Popen(codec_cmd, stdout=subprocess.PIPE).communicate()
+    codec = codec.decode('utf-8').replace("\n", "")
+    print(codec)
+    if codec == 'hevc':
+      cmd += ["-c:v", "copy"]
+    else:
+      cmd += ["-c:v", "libx265"]
+  except:
     cmd += ["-c:v", "libx265"]
-except:
-  cmd += ["-c:v", "libx265"]
-  next
+    pass
 
-cmd += ["-c:a", "aac"]
-if srt != None:
-  cmd += ["-c:s", "ass"]
-cmd += [output]
+  cmd += ["-c:a", "aac"]
+  if srt != None:
+    cmd += ["-c:s", "ass"]
+  cmd += [output]
+
+if output_264 != '':
+  if output == '':
+    cmd += ['-i', video]
+    if chapters != None:
+      cmd += ['-i', chapters]
+      cmd += ['-map_metadata', '1']
+  else:
+    cmd += ["-map", f'{audio_count}:v']
+    cmd += ["-map", f'{audio_count}:a']
+    if chapters != None:
+      cmd += ["-map_metadata", str(audio_count)]
+  cmd += ['-c:v', 'libx264']
+  cmd += ['-c:a', 'aac']
+  cmd += ['-movflags', '+faststart']
+  cmd += [output_264]
 
 print(subprocess.list2cmdline(cmd))
-if output != '':
+if not dry_run:
   process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
   for c in iter(lambda: process.stdout.read(1), b""):
     sys.stdout.write(c)
