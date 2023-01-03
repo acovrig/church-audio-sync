@@ -70,32 +70,61 @@ def filter_file(f):
   print(' (include)')
   return True
 
-def find_sync_file():
+def find_sync_file(fn = 'stream'):
   global sync_file, rate
   sync_file = None
   for root, dirs, files in walk(audio):
     for f in files:
-      if "stream" in f.lower():
+      if fn.lower() in f.lower():
         sync_file = path.join(audio, f)
-        cmd = ['ffprobe', '-v', 'error', '-of', 'default=noprint_wrappers=1:nokey=1', '-show_entries', 'stream=sample_rate', path.join(audio, f)]
-        print('Sample rate: ', end='')
-        try:
-          rate, err = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
-          rate = int(rate)
-          print(rate)
-          if rate != 48000:
-            if not path.exists(path.join(audio, f'{f}.sync.aac')):
-              cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-channel_layout', 'mono', '-i', path.join(audio, f), '-af', 'aresample=resampler=soxr', '-ar', '48000', path.join(audio, f'{f}.sync.aac')]
-              print('Converting rate: ', end='')
-              print(subprocess.list2cmdline(cmd))
-              process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-              for c in iter(lambda: process.stdout.read(1), b""):
-                sys.stdout.write(c)
-            sync_file = path.join(audio, f'{f}.sync.aac')
+        if fn.lower() != 'stream':
+          try:
+            sys.stdout.write(f'Getting volume for sync {fn}: ')
+            sys.stdout.flush()
+            cmd = ['ffmpeg', '-hide_banner', '-i', sync_file, '-af', 'volumedetect', '-f', 'null', path.join(audio, f'{f}.voldetect')]
+            _, volume = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            volume = re.search(r"max_volume: (.*?) dB", str(volume)).group(1)
+            volume = float(volume)
+            print(volume)
+            if volume < -50:
+              sync_file = None
+          except:
+            print(' (include)')
+            return True
+
+        if sync_file != None:
+          cmd = ['ffprobe', '-v', 'error', '-of', 'default=noprint_wrappers=1:nokey=1', '-show_entries', 'stream=sample_rate', path.join(audio, f)]
+          print('Sample rate: ', end='')
+          try:
+            rate, err = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
+            rate = int(rate)
+            print(rate)
+            if rate != 48000:
+              if not path.exists(path.join(audio, f'{f}.sync.aac')):
+                cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-channel_layout', 'mono', '-i', path.join(audio, f), '-af', 'aresample=resampler=soxr', '-ar', '48000', path.join(audio, f'{f}.sync.aac')]
+                print('Converting rate: ', end='')
+                print(subprocess.list2cmdline(cmd))
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                for c in iter(lambda: process.stdout.read(1), b""):
+                  sys.stdout.write(c)
+              sync_file = path.join(audio, f'{f}.sync.aac')
+              break
+          except:
+            print('ERROR: Unable to determine sample rate')
             break
-        except:
-          print('ERROR: Unable to determine sample rate')
-          break
+  if sync_file == None:
+    if fn == 'stream':
+      print('WARNING: Failed to get sync_file from stream, trying monitors')
+      find_sync_file('monitors')
+    elif fn == 'monitors':
+      print('WARNING: Failed to get sync_file from monitors, trying piano')
+      find_sync_file('piano')
+    elif fn == 'piano':
+      print('WARNING: Failed to get sync_file from piano, trying lapel')
+      find_sync_file('lapel')
+    elif fn == 'lapel':
+      print('WARNING: Failed to get sync_file from lapel, trying prayer')
+      find_sync_file('prayer')
   return sync_file
 
 def get_opts():
