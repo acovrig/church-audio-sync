@@ -4,11 +4,22 @@ import re
 import autosub
 
 offset = None
+skip_voldetect = False
 # Uncomment this to skip calculating offset:
-# offset = 0
+# offset = 473.291
+
+# Set to true to not detect volume (therefore including almost all audio tracks)
+# skip_voldetect = True
+
+
 
 def print_help():
-  print('-v <video file> -a <audio dir> [-c <chapters>] [-s <subtitles>] [-p <pdfs_dir] [-o <output>]')
+  print('Usage: -v <video file> [-d (--dry_run)] [-i (--include_audio)] [-a <audio dir>] [-c <chapters>] [-s <subtitles>] [-p <pdfs_dir] (-o <output> -2 <h.264 output>)')
+  print('An output path is required either for HEVC [-o] or H.264 [-2]')
+  print('--dry_run (-d) will generate the ffmpeg command but not execute it')
+  print('--include_audio (-i) will include all audio files and not detect volume to determine if the audio file is empty or not')
+  print('The audio dir is required, but will be guessed if not provided.')
+  print('The chapters, subtitles, and pdfs_dir will be guessed unless provided')
 
 def filter_file(f):
   if re.match(r".*wav$", f.lower()) == None:
@@ -33,13 +44,19 @@ def filter_file(f):
     return True
 
   try:
+    title=re.search(r"_([a-zA-Z0-9 ]*?)_Take", f).group(1)
+  except:
+    title = f
+
+  sys.stdout.write(f'Getting volume of {title}: ')
+  sys.stdout.flush()
+
+  if skip_voldetect:
+    print('skip_voldetect=True (including)')
+    return True
+
+  try:
     cmd = ['ffmpeg', '-hide_banner', '-i', path.join(audio, f), '-af', 'volumedetect', '-f', 'null', path.join(audio, f'{f}.voldetect')]
-    try:
-      title=re.search(r"_([a-zA-Z0-9 ]*?)_Take", f).group(1)
-    except:
-      title = f
-    sys.stdout.write(f'Getting volume of {title}: ')
-    sys.stdout.flush()
     _, volume = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     volume = re.search(r"max_volume: (.*?) dB", str(volume)).group(1)
     volume = float(volume)
