@@ -185,6 +185,15 @@ def find_additions():
 
 def find_offset():
   global offset, sync_file
+
+  find_sync_file()
+  print(f'Sync file: {sync_file}')
+
+  if sync_file == None:
+    print('ERROR, no sync_file specified, skipping offset calculation')
+    offset = 0
+    return offset
+
   if offset == None:
     offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
     if offset == b'':
@@ -201,7 +210,24 @@ def find_offset():
       sync_file = path.join(audio, f'{f}.sync30.aac')
       offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
     if offset == b'':
-      print("Unable to determine offset, please manually enter (in seconds): ", end="")
+      if 'stream' in sync_file.lower():
+        print(f'WARNING: unable to find offset in {sync_file}, trying monitors')
+        find_sync_file('monitors')
+        find_offset()
+      elif 'monitors' in sync_file.lower():
+        print(f'WARNING: unable to find offset in {sync_file}, trying piano')
+        find_sync_file('piano')
+        find_offset()
+      elif 'piano' in sync_file.lower():
+        print(f'WARNING: unable to find offset in {sync_file}, trying lapel')
+        find_sync_file('lapel')
+        find_offset()
+      elif 'lapel' in sync_file.lower():
+        print(f'WARNING: unable to find offset in {sync_file}, trying prayer')
+        find_sync_file('prayer')
+        find_offset()
+      else:
+        print("ERROR: Unable to determine offset")
       sys.exit(2)
   offset = float(offset)
 
