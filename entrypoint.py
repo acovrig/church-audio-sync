@@ -48,7 +48,7 @@ def filter_file(f):
   except:
     title = f
 
-  sys.stdout.write(f'Getting volume of {title}: ')
+  sys.stdout.write(f"\tGetting volume of {title}: ")
   sys.stdout.flush()
 
   if skip_voldetect:
@@ -190,6 +190,7 @@ def find_additions():
       if not path.exists(srt):
         print('Generating subtitles:')
         autosub.generate_subtitles(source_path=video, output=f"{video}.srt")
+        print('')
   if pdfdir == '':
     pdfdir = path.abspath(path.join(path.dirname(video), '..', 'pdf'))
     if not path.exists(pdfdir):
@@ -204,6 +205,8 @@ def find_additions():
 def find_offset():
   global offset, sync_file
 
+  print("\nGetting audio offset:\nFinding sync file")
+
   find_sync_file()
   print(f'Sync file: {sync_file}')
 
@@ -213,6 +216,8 @@ def find_offset():
     return offset
 
   if offset == None:
+    sys.stdout.write('Calculating offset: ')
+    sys.stdout.flush()
     offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
     if offset == b'':
       print("Unable to determine offset, trying skip: ")
@@ -220,13 +225,13 @@ def find_offset():
         cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f'{f}.sync.aac'), '-c', 'copy', path.join(audio, f'{f}.sync30.aac')]
       else:
         cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', path.join(audio, f), path.join(audio, f'{f}.sync30.aac')]
-      print('Jumping 30min: ', end='')
-      print(subprocess.list2cmdline(cmd))
+      # print(subprocess.list2cmdline(cmd))
       process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
       for c in iter(lambda: process.stdout.read(1), b""):
         sys.stdout.write(c)
       sync_file = path.join(audio, f'{f}.sync30.aac')
       offset, err = subprocess.Popen(['/src/compute-sound-offset.sh', video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
+
     if offset == b'':
       if 'stream' in sync_file.lower():
         print(f'WARNING: unable to find offset in {sync_file}, trying monitors')
@@ -248,6 +253,7 @@ def find_offset():
         print("ERROR: Unable to determine offset")
       sys.exit(2)
   offset = float(offset)
+  print(offset)
 
   for root, dirs, files in walk(audio):
     for f in files:
@@ -258,7 +264,7 @@ def find_offset():
 
 def fix_chapters():
   global chapters
-  print(f'Fix chapters with offset {offset} - {chapters}')
+  print(f"\nFix chapters with offset {offset} - {chapters}")
   main_title = None
   chapters_arr = []
   with open(chapters, 'r') as f:
@@ -336,9 +342,9 @@ if path.exists(output):
 cmd=['ffmpeg', '-hide_banner', '-n']
 if output != '':
   find_offset()
-  print(f'Offset: {offset}')
 
   audio_count = 0
+  print("\nGetting audio files (by volume):")
   for root, dirs, files in walk(audio):
     audio_files = list(filter(filter_file, files))
 
@@ -392,12 +398,12 @@ if output != '':
   try:
     date = re.search(r"([0-9]{4}-[0-9]{2}-[0-9]{2})", video).group(1)
     pdf = path.join(pdfdir, f"{date}.pdf")
-    print(f'PDF: {pdf}: ', end='')
+    print(f"\nPDF: {pdf}: ", end='')
     if path.exists(pdf):
-      print('exists')
+      print("exists\n")
       cmd += ["-attach", pdf, "-metadata:s:t", "mimetype=application/pdf"]
     else:
-      print('does not exist')
+      print("does not exist\n")
   except:
     print(f'Filed to get PDF from {video}')
     next
