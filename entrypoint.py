@@ -175,6 +175,9 @@ def get_opts():
     print('ERROR: output path is required')
     print('Please specify an HEVC output [-o] or H.264 output [-2]')
     sys.exit(2)
+  if not output.lower().endswith('mkv'):
+    output = f'{output}.mkv'
+    print(f'WARNING: output must end in mkv - appended mkv to output name: {output}')
 
   find_additions()
   
