@@ -1,0 +1,3 @@
+paramiko==2.10.3
+pexpect==4.8.0
+mysql-connector-python==8.0.28
