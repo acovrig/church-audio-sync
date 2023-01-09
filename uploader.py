@@ -3,12 +3,10 @@ from os import path
 
 class Uploader():
 
-  def __init__(self, config, src, dst, sub, prog):
+  def __init__(self, config, src, dst):
     self.src = src
     self.dst = dst
     self.fn = path.basename(src)
-    self.sub = sub
-    self.prog = prog
     self.config = config
 
   def upload(self):
@@ -29,20 +27,13 @@ class Uploader():
 
     if self.fn in sftp.listdir():
       print(f'Skipping {self.fn}')
-      self.sub.pack_forget()
-      self.prog.pack_forget()
       return
 
-    self.sub.config(text=f"Uploading {self.dst}/{self.fn} to {self.config['host']}")
     sftp.put(self.src, self.fn, self.upload_prog)
   
     print('Done')
-    self.sub.pack_forget()
-    self.prog.pack_forget()
 
   def upload_prog(self, i, t):
     if t > 0:
       per = round((i*100)/t)
-      if self.prog['value'] != per:
-        print(f'Upoaded {per}% ({i} of {t})')
-        self.prog.config(value=per)
+      print(f'Upoaded {per}% ({i} of {t})')

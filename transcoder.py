@@ -5,10 +5,8 @@ from subprocess import Popen
 from datetime import datetime
 
 class Transcoder():
-  def __init__(self, flavors, sub, prog):
+  def __init__(self, flavors):
     self.flavors = flavors
-    self.sub = sub
-    self.prog = prog
 
   def transcode(self, src, chapters = None):
     cmd = ['ffmpeg', '-n', '-hide_banner', '-nostdin', '-i', src]
@@ -37,7 +35,6 @@ class Transcoder():
         ts = datetime.strptime(t, "%H:%M:%S")
         ts = (ts - datetime(1900, 1, 1)).total_seconds()
         print(f'\r {ts}/{dur}: {src} ({fps}fps - x{speed})', end='')
-        self.sub.config(text=f'Transcoding {ts}/{dur}: {path.basename(src)} ({fps}fps - x{speed})')
         if dur > 0:
           self.prog.config(value=round((ts*100)/dur))
       elif dur_m != None and dur == 0:
@@ -45,8 +42,6 @@ class Transcoder():
         ts = datetime.strptime(t, "%H:%M:%S")
         dur = (ts - datetime(1900, 1, 1)).total_seconds()
     print('Done')
-    self.sub.pack_forget()
-    self.prog.pack_forget()
     if chapters is not None:
       remove(chapters)
 
