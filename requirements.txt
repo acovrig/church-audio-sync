@@ -1,3 +1,5 @@
+autosub3==0.1.0
 paramiko==2.10.3
 pexpect==4.8.0
+python-dotenv==0.21.0
 mysql-connector-python==8.0.28

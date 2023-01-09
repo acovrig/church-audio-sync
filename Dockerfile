@@ -15,9 +15,9 @@ RUN apt update \
     sox \
   && apt clean
 
-RUN pip3 install autosub3
+ADD Makefile compute* sound* requirements.txt /src/
 
-ADD Makefile compute* sound* /src/
+RUN pip3 install -r requirements.txt
 RUN make clean && make -j
 
 ADD . /src

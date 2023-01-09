@@ -5,10 +5,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Current File",
+      "name": "Python: Entrypoint",
       "type": "python",
       "request": "launch",
-      "program": "main.py",
+      "program": "entrypoint.py",
       "console": "integratedTerminal",
       "justMyCode": true
     }

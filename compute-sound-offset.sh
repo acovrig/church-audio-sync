@@ -29,6 +29,14 @@ TEMP_DIR=$(mktemp -d /var/tmp/$(basename "$0").XXXXXXXXXX)
 SCRIPT_DIR="$(dirname $(realpath "$0"))"
 COMPUTE_OFFSET="${SCRIPT_DIR}/compute_sound_offset"
 
+if [ ! -e "${COMPUTE_OFFSET}" ]; then
+    if [ -e "${COMPUTE_OFFSET}.exe" ]; then
+        COMPUTE_OFFSET="${COMPUTE_OFFSET}.exe"
+    else
+        make
+    fi
+fi
+
 TMP_GOOD_SOUND="${TEMP_DIR}/$(basename "${GOOD_SOUND}").wav"
 TMP_BAD_SOUND="${TEMP_DIR}/$(basename "${BAD_SOUND}").wav"
 downsample_and_cut "${GOOD_SOUND}" "${TMP_GOOD_SOUND}"
