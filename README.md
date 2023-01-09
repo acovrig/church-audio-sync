@@ -12,6 +12,10 @@ This app should:
 * Upload the 7z and mp4 files to the school's server (for an off-site backup)
 * Upload the transcoded H.264 mp4 to Beckett
 
+# Requirements
+* g++ 11
+* libfftw3-dev
+* pip3 install -r requirements.txt
 
 # Sync Audio Tracks
 This code is forked and expanded from [Alexander Lopatin's repository](https://github.com/alopatindev/sync-audio-tracks).

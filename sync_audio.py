@@ -256,16 +256,14 @@ class SyncAudio():
 
     sys.stdout.write('Calculating offset: ')
     sys.stdout.flush()
-    # offset, _ = subprocess.Popen(['./compute-sound-offset.sh', self.config.video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
     offset = b''
+    if not self.config.force_30:
+      offset, _ = subprocess.Popen(['./compute-sound-offset.sh', self.config.video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
     if offset == b'':
       print("Unable to determine offset, trying skip: ")
       cmd = ['ffmpeg', '-v', 'warning', '-stats', '-n', '-ss', str(30*60), '-i', sync_file, '-t', '1000', f'{sync_file}.sync30.aac']
-      # print(subprocess.list2cmdline(cmd))
-      process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+      subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
       sync_file = f'{sync_file}.sync30.aac'
-      for c in iter(lambda: process.stdout.read(1), b""):
-        sys.stdout.write(c)
       offset, _ = subprocess.Popen(['./compute-sound-offset.sh', self.config.video, sync_file, '900'], stdout=subprocess.PIPE).communicate()
       if offset != b'':
         offset = float(offset) + (30 * 60)

@@ -19,6 +19,7 @@ class Config():
   dry_run: bool = False
   skip_voldetect: bool = False
   offset: float = None
+  force_30: bool = False
 
   def __post_init__(self):
     load_dotenv()
