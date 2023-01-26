@@ -11,18 +11,18 @@ class ChurchVideo():
     self.get_opts()
 
   def print_help(self):
-    print('Usage: [-s (--date)] [-d (--dry_run)] [-o (--offset) offset] [-f (--force_30)] [-i (--include_audio)] [-4 (--h264)] [-5 (--hevc)]')
-    print('-s --date => date to process (in YYYY-MM-DD)')
+    print('Usage: [-d (--date)] [-s (--dry_run)] [-o (--offset) offset] [-f (--force_30)] [-i (--include_audio)] [-4 (--h264)] [-5 (--hevc)]')
+    print('-d --date => date to process (in YYYY-MM-DD)')
     print('-4 --h264 => Only process H.264 (mp4 video)')
     print('-5 --hevc => Only process HEVC (mkv package)')
-    print('-d --dry_run => generate the ffmpeg command but not execute it')
+    print('-s --dry_run => generate the ffmpeg command but not execute it')
     print('-f --force_30 => Offset audio sync test by 30min')
     print('-i --include_audio => include all audio files and not detect volume to determine if the audio file is empty or not')
     print('-o --offset => Offset (seconds) between audio and video')
 
   def get_opts(self):
     try:
-      opts, _ = getopt.getopt(sys.argv[1:],"idfo:p:45s:",["date=", "offset=", "force_30", "pdf_dir", "dry_run", "include_audio", "h264", "h265"])
+      opts, _ = getopt.getopt(sys.argv[1:],"ifo:p:45sd:v:a:",["date=", "offset=", "video=", "audio=", "force_30", "pdf_dir", "dry_run", "include_audio", "h264", "h265"])
     except getopt.GetoptError:
       self.print_help()
       sys.exit(2)
@@ -30,7 +30,7 @@ class ChurchVideo():
       if opt == '-h':
         self.print_help()
         sys.exit()
-      elif opt in ("-s", "--date"):
+      elif opt in ("-d", "--date"):
         self.config.date = arg
       elif opt in ("-4", "--h264"):
         self.config.h264 = True
@@ -44,7 +44,7 @@ class ChurchVideo():
           pass
       elif opt in ("-p", "--pdfs"):
         self.config.pdf_dir = arg
-      elif opt in ("-d", "--dry_run"): 
+      elif opt in ("-s", "--dry_run"): # s for skip
         self.config.dry_run = True
       elif opt in ("-f", "--force_30"): 
         self.config.force_30 = True
