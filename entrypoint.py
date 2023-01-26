@@ -33,6 +33,10 @@ class ChurchVideo():
       elif opt in ("-d", "--date"):
         self.config.date = arg
         self.config.set_date(arg)
+      elif opt in ("-v", "--video"):
+        self.config.video = arg
+      elif opt in ("-a", "--audio"):
+        self.config.audio = arg
       elif opt in ("-4", "--h264"):
         self.config.h264 = True
       elif opt in ("-5", "--hevc"):
@@ -61,18 +65,19 @@ class ChurchVideo():
     if not self.config.hevc:
       self.config.output = None
 
-    for _root, _dirs, files in os.walk(self.config.vid_base):
-      for f in files:
-        # if f.lower().startswith(self.config.date):
-        if re.match(f"^{self.config.date}.*(?:mp4|mkv)", f.lower()) != None:
-          self.config.video = os.path.abspath(os.path.join(self.config.vid_base, f))
-          # break # Removed the break to find the last file that matches (most recent)
+    if self.config.video == None:
+      for _root, _dirs, files in os.walk(self.config.vid_base):
+        for f in files:
+          if re.match(f"^{self.config.date}.*(?:mp4|mkv)", f.lower()) != None:
+            self.config.video = os.path.abspath(os.path.join(self.config.vid_base, f))
+            # break # Removed the break to find the last file that matches (most recent)
 
-    for _root, dirs, _files in os.walk(self.config.source_base):
-      for f in dirs:
-        if f.lower().startswith(self.config.date):
-          self.config.audio = os.path.abspath(os.path.join(self.config.source_base, f, 'Recorded'))
-          # break # Removed the break to find the last file that matches (most recent)
+    if self.config.audio == None:
+      for _root, dirs, _files in os.walk(self.config.source_base):
+        for f in dirs:
+          if f.lower().startswith(self.config.date):
+            self.config.audio = os.path.abspath(os.path.join(self.config.source_base, f, 'Recorded'))
+            # break # Removed the break to find the last file that matches (most recent)
 
     if self.config.video == None:
       print(f'ERROR: Unable to locate video file (for {self.config.date})\n')
