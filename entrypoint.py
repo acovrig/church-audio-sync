@@ -117,9 +117,13 @@ class ChurchVideo():
 
   def find_additions(self):
     if self.config.srt_file == None:
-      print('Generating subtitles:')
-      autosub.generate_subtitles(source_path=self.config.video, output=f"{self.config.video_base}.srt")
-      self.config.srt_file = f'{self.config.video_base}.srt'
+      print('Generating subtitles:', end='')
+      if self.config.dry_run:
+        print('Skipping (dry run)')
+      else:
+        autosub.generate_subtitles(source_path=self.config.video, output=f"{self.config.video_base}.srt")
+        self.config.srt_file = f'{self.config.video_base}.srt'
+        print(' done')
       print('')
 
     if self.config.pdf_file == None:
