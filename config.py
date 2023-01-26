@@ -22,7 +22,10 @@ class Config():
   force_30: bool = False
 
   def __post_init__(self):
-    load_dotenv()
+    if os.path.exists('.env'):
+      load_dotenv()
+    else:
+      print('WARNGIN: .evn file not found, using bare env')
 
     self.source_base = os.getenv('SOURCE_BASE')
     self.vid_base = os.getenv('VID_BASE')
@@ -48,12 +51,19 @@ class Config():
       'dir': os.getenv('SFTP_DVD_DIR'),
     }
 
-    base264 = os.path.join(self.archive_video_base, 'h264', self.date)
-    self.output = os.path.join(self.archive_video_base, 'hevc', f'{self.date}.mkv')
-    self.output_264 = os.path.join(base264, f'{self.date}.mp4')
+    self.set_date(self.date)
+
+  def set_date(self, date):
+    if date == None:
+      date = self.date
+
+    base264 = os.path.join(self.archive_video_base, 'h264', date)
+    self.output = os.path.join(self.archive_video_base, 'hevc', f'{date}.mkv')
+    self.output_264 = os.path.join(base264, f'{date}.mp4')
     if not os.path.exists(base264):
       os.makedirs(base264)
 
-    pdf = os.path.abspath(os.path.join(self.pdf_base, f'{self.date}.pdf'))
+    pdf = os.path.abspath(os.path.join(self.pdf_base, f'{date}.pdf'))
     if os.path.exists(pdf):
       self.pdf_file = pdf
+

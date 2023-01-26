@@ -32,6 +32,7 @@ class ChurchVideo():
         sys.exit()
       elif opt in ("-d", "--date"):
         self.config.date = arg
+        self.config.set_date(arg)
       elif opt in ("-4", "--h264"):
         self.config.h264 = True
       elif opt in ("-5", "--hevc"):
