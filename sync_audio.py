@@ -200,7 +200,7 @@ class SyncAudio():
               '-show_entries', 'stream=sample_rate',
               os.path.join(self.config.audio, f)
             ]
-            print('Sample rate: ', end='')
+            print('\tSample rate: ', end='')
             try:
               rate, _ = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
               self.rate = int(rate)
