@@ -1,4 +1,5 @@
-.env
+.env*
+!.env.sample
 __pycache__
 credentials.json
 token-cal.json
