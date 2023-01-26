@@ -61,8 +61,8 @@ class SyncAudio():
         cmd += ["-i", self.config.chapters_file]
         cmd += ["-map_metadata", str(audio_count + 1)]
 
-      cmd += ["-map", f'{audio_count - 1}:v']
-      cmd += ["-map", f'{audio_count - 1}:a']
+      cmd += ["-map", f'{audio_count}:v']
+      cmd += ["-map", f'{audio_count}:a']
       if self.config.srt_file != None:
         cmd += ["-map", f"{audio_count}:0"]
       for i, f in enumerate(audio_files):
@@ -77,8 +77,8 @@ class SyncAudio():
           title = f
         cmd += [f'-metadata:s:a:{i+1}', f'title={title}']
 
-        if self.config.pdf_file != None:
-          cmd += ["-attach", self.config.pdf_file, "-metadata:s:t", "mimetype=application/pdf"]
+      if self.config.pdf_file != None:
+        cmd += ["-attach", self.config.pdf_file, "-metadata:s:t", "mimetype=application/pdf"]
 
       cmd += ["-b:a", "192k"]
 
